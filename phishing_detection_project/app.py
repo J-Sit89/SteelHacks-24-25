@@ -4,6 +4,12 @@ import joblib
 import pandas as pd
 from urllib.parse import urlparse
 import re
+pipeline = joblib.load('phishing_detection_pipeline.pkl')
+
+
+
+
+
 
 # Initialize Flask app
 app = Flask(__name__)
