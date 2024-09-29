@@ -13,7 +13,7 @@
             align-items: center;
             font-family: 'Courier New', Courier, monospace;
             color: white;
-            background: linear-gradient(100deg, #FFB81C, #003594);
+            background: linear-gradient(120deg, #FFB81C, #003594);
         }
 
         header {
@@ -29,9 +29,10 @@
         header img {
             width: 100px;
             height: auto;
+            cursor: pointer;
         }
 
-        header a {
+        header nav a {
             color: white;
             text-decoration: none;
             margin-left: 20px;
@@ -47,30 +48,44 @@
             flex: 1;
         }
 
-        .box img {
-            width: 100px;
-            height: 100px;
-            margin: 15px;
-            transition: transform 0.3s;
-        }
-
-        .box img:hover {
-            transform: scale(1.1);
-        }
-
-        .box a {
-            text-decoration: none;
-        }
-
         .description {
             margin-top: 20px;
             font-size: 18px;
         }
 
         #more-info {
-            display: none;
             margin-top: 20px;
-            font-size: 16px;
+            font-size: 18px;
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.5s ease;
+        }
+
+        button {
+            background-color: #FFB81C;
+            border: none;
+            color: #003594;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 18px;
+            font-family: 'Courier New', Courier, monospace;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #003594;
+            color: #FFB81C;
+        }
+
+        #more-info.show {
+            max-height: 300px;
+        }
+
+        .result {
+            margin-top: 20px;
+            font-size: 18px;
+            color: white; 
         }
 
         footer {
@@ -92,69 +107,75 @@
             color: white;
             text-decoration: none;
         }
-
-        /* Style for the button with a different font */
-        button {
-            background-color: #FFB81C;
-            border: none;
-            color: #003594;
-            padding: 10px 20px;
-            cursor: pointer;
-            border-radius: 5px;
-            font-size: 16px;
-            font-family: Arial, sans-serif; /* Change font to something different */
-            transition: background-color 0.3s;
-        }
-
-        button:hover {
-            background-color: #003594;
-            color: #FFB81C;
-        }
-
-        /* Animation for toggling visibility */
-        #more-info {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.5s ease;
-        }
-
-        #more-info.show {
-            max-height: 300px; /* or a reasonable height for the content */
-        }
     </style>
-</head>
-<body>
-    <header>
-        <a href='steel_hacks_main.html'>
-            <img src="SteelHacks-24-25/Shield_UnivPittsburgh_White.png" alt="Pitt Logo">
-        </a>
-        <nav>
-            <a href="steel_hacks_link_checker.html">Link Checker</a>
-            <a href="steel_hacks_about_us.html">About Us</a>
-        </nav>
-    </header>
-    <div class="box">
-        <h1>Phishing Detection Extension</h1>
-        <p>Protect yourself from phishing attacks by analyzing links inside emails.</p>
-        <button onclick="toggleMoreInfo()">Learn More</button>
-        <div id="more-info">
-            <p>This extension checks links against a database of known phishing sites, alerting you if a link is suspicious. With real-time detection, you’re protected from new threats as they emerge.</p>
-            <p>Fully compatible with Firefox, it integrates seamlessly, providing enhanced security for your browsing and email experience, whether on Windows, macOS, or Linux.</p>
-        </div>
-    </div>
-    <footer>
-        <p>For questions, email us at <a href="mailto:questions@example.com">questions@example.com</a></p>
-    </footer>
-
     <script>
         function toggleMoreInfo() {
             const moreInfo = document.getElementById('more-info');
             if (moreInfo.classList.contains('show')) {
                 moreInfo.classList.remove('show');
+                moreInfo.style.maxHeight = "0";
             } else {
                 moreInfo.classList.add('show');
+                moreInfo.style.maxHeight = moreInfo.scrollHeight + "px";
+            }
+        }
+
+        async function checkLink() {
+            const linkInput = document.getElementById('linkInput').value;
+            const resultDiv = document.getElementById('result');
+
+            try {
+                const response = await fetch('/check_link', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: linkInput }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+                resultDiv.innerText = data.result === 'Phishing' ? 'Phishing detected!' : 'Link is safe.';
+            } catch (error) {
+                resultDiv.innerText = 'Error checking the link: ' + error.message;
             }
         }
     </script>
+</head>
+<body>
+    <header>
+        <a href='steel_hacks_main.html'>
+            <img src="Shield_UnivPittsburgh_White.png" alt="Pitt Logo">
+        </a>
+        <nav>
+            <a href="https://github.com/J-Sit89/SteelHacks-24-25">GitHub</a>
+        </nav>
+    </header>
+
+    <div class="box">
+        <h1>Gone Phishin!</h1>
+        <p>Protect yourself from phishing attacks by analyzing links inside emails.</p>
+        <button onclick="toggleMoreInfo()">Learn More</button>
+        <div id="more-info">
+            <p>This extension is designed to help users protect themselves from phishing attacks by analyzing URLs found in emails. It works by extracting over 50 different features from each URL, including the number of special characters like dots, hyphens, and slashes, the length of the URL, and whether the domain is an IP address. These features are used to detect suspicious patterns commonly found in phishing links.</p>
+            <p>Gone Phishin uses a Flask backend with a machine learning model trained to recognize phishing URLs. When a link is analyzed, it compares the extracted features to those of known phishing sites and returns a prediction indicating whether the link is safe or not. Additionally, the extension includes a whitelist of trusted domains like <code>microsoft.com</code> and <code>google.com</code>, ensuring that links from these sites are automatically marked as safe.</p>
+            <p>The detection engine uses a joblib-pickled machine learning pipeline that applies advanced feature extraction techniques to URLs and provides real-time phishing detection. This ensures users are protected from emerging threats as they arise. The extension is fully compatible with Firefox and integrates seamlessly with email services like Gmail and Outlook. Whether you're using Windows, macOS, or Linux, this extension adds an extra layer of security by safeguarding your email and browsing activities.</p>
+            <p>This extension is specifically designed to help protect University of Pittsburgh students from falling victim to phishing scams, which have become increasingly sophisticated. With the rise of phishing emails targeting students' university accounts and personal information, this tool provides an extra layer of defense. By analyzing suspicious links found in emails, it alerts students before they can click on malicious content, helping to safeguard their academic, financial, and personal data. Whether receiving emails from unfamiliar sources or common services, Pitt students can rely on this extension to help them navigate the online environment more safely.</p>
+        </div>
+    </div>
+
+    <div class="box" id="link-checker">
+        <h1>Link Checker</h1>
+        <input type="text" id="linkInput" placeholder="Enter URL here" style="font-size: 18px; padding: 10px; width: 80%;" />
+        <button onclick="checkLink()">Check Link</button>
+        <div class="result" id="result"></div>
+    </div>
+
+    <footer>
+        <p>For questions, email us at <a href="mailto:jjsitler89@gmail.com">jjsitler89@gmail.com</a></p>
+    </footer>
 </body>
 </html>
