@@ -1,13 +1,20 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import joblib
 import pandas as pd
 from urllib.parse import urlparse
-import re  
-
+import re
 pipeline = joblib.load('phishing_detection_pipeline.pkl')
 
-app = Flask(__name__)
 
+
+
+
+
+# Initialize Flask app
+app = Flask(__name__)
+CORS(app)  
+# Function to extract features from URL
 def extract_url_features(url):
     parsed_url = urlparse(url)
     domain = parsed_url.netloc
@@ -15,6 +22,7 @@ def extract_url_features(url):
     query = parsed_url.query
     file_name = path.split('/')[-1] if path else ''
     
+    # Helper function to check if a domain is an IP address
     def is_ip(domain):
         return bool(re.match(r"(\d{1,3}\.){3}\d{1,3}", domain))
     
@@ -58,7 +66,7 @@ def extract_url_features(url):
         'qty_vowels_domain': sum(1 for char in domain if char in 'aeiou'),
         'domain_length': len(domain),
         'domain_in_ip': 1 if is_ip(domain) else 0,
-        'server_client_domain': 0, 
+        'server_client_domain': 0,  # Example placeholder, adjust logic if needed
         'qty_dot_directory': path.count('.'),
         'qty_hyphen_directory': path.count('-'),
         'qty_underline_directory': path.count('_'),
@@ -133,7 +141,13 @@ def extract_url_features(url):
     }
     
     return features
+WHITELISTED_DOMAINS = {'canvas.pitt.edu''microsoft.com', 'google.com', 'aka.ms', 'apple.com', 'github.com', 'linkedin.com'}
 
+def is_domain_whitelisted(domain):
+    for whitelisted_domain in WHITELISTED_DOMAINS:
+        if domain.endswith(whitelisted_domain):
+            return True
+    return False
 # Define the /analyze_link route for analyzing phishing links
 @app.route('/analyze_link', methods=['POST'])
 def analyze_link():
@@ -141,16 +155,19 @@ def analyze_link():
     url = data.get('url')
     
     # Extract features from the URL
+    parsed_url = urlparse(url)
+    domain = parsed_url.netloc
+    
+    # Check if domain is whitelisted
+    if is_domain_whitelisted(domain):
+        # Return '0' indicating the link is safe
+        return jsonify({'phishing': 0})
+    
+    # Proceed with feature extraction and prediction
     features = extract_url_features(url)
-    
-    # Convert to DataFrame
     features_df = pd.DataFrame([features])
-    
-    # Predict phishing status
     prediction = pipeline.predict(features_df)
-    
-    # Return the prediction as JSON
     return jsonify({'phishing': int(prediction[0])})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()

@@ -4,23 +4,28 @@ function sendUrlToApi(url, callback) {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ url: url })  // Send URL to Flask API
+        body: JSON.stringify({ url: url })
     })
     .then(response => response.json())
     .then(data => {
-        callback(data.phishing);  // Get the result (0 or 1)
+        callback(data.phishing);
     })
     .catch(error => {
         console.error('Error:', error);
+        callback(null);  // Indicate an error occurred
     });
-  }
-  
-  // Listen for messages from content_script.js
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+}
+
+// Listen for messages from content_script.js
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'checkLink') {
         sendUrlToApi(message.url, (result) => {
-            sendResponse({ result: result });
+            if (result !== null) {
+                sendResponse({ result: result });
+            } else {
+                sendResponse({ result: -1 });  // Error indicator
+            }
         });
         return true;  // Keeps the response channel open
     }
-  });
+});
