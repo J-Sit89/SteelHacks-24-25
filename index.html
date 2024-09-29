@@ -7,7 +7,7 @@
     <style>
         body {
             margin: 0;
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -47,6 +47,15 @@
             margin: 20px 0;
             flex: 1;
         }
+        .box2 {
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            width: 60%;
+            margin: 20px 0;
+            flex: 1;
+        }
 
         .description {
             margin-top: 20px;
@@ -60,6 +69,7 @@
             max-height: 0;
             transition: max-height 0.5s ease;
         }
+        
 
         button {
             background-color: #FFB81C;
@@ -108,52 +118,52 @@
             text-decoration: none;
         }
     </style>
-  <script>
-    async function checkLink() {
-        const linkInput = document.getElementById('linkInput').value;
-        const resultDiv = document.getElementById('result');
+    <script>
+        async function checkEmail() {
+            const emailInput = document.getElementById('emailInput').value;
+            const resultDiv = document.getElementById('result');
 
-        try {
-            const response = await fetch('http://127.0.0.1:5000/check_link', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ url: linkInput }),
-});
+            try {
+                const response = await fetch('http://127.0.0.1:5000/check_email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: emailInput }),
+                });
 
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
 
-            const data = await response.json();
-            if (data.phishing === 1) {
-                resultDiv.innerText = 'Phishing detected!';
-                resultDiv.style.color = 'red';
-            } else if (data.phishing === 0) {
-                resultDiv.innerText = 'Link is safe.';
-                resultDiv.style.color = 'green';
-            } else {
-                resultDiv.innerText = 'Unable to determine the link status.';
+                const data = await response.json();
+                if (data.phishing === 1) {
+                    resultDiv.innerText = 'Phishing detected!';
+                    resultDiv.style.color = 'red';
+                } else if (data.phishing === 0) {
+                    resultDiv.innerText = 'Email is safe.';
+                    resultDiv.style.color = 'green';
+                } else {
+                    resultDiv.innerText = 'Unable to determine the email status.';
+                    resultDiv.style.color = 'yellow';
+                }
+            } catch (error) {
+                resultDiv.innerText = 'Error checking the email: ' + error.message;
                 resultDiv.style.color = 'yellow';
             }
-        } catch (error) {
-            resultDiv.innerText = 'Error checking the link: ' + error.message;
-            resultDiv.style.color = 'yellow';
         }
-    }
 
-    function toggleMoreInfo() {
-        const moreInfo = document.getElementById('more-info');
-        if (moreInfo.classList.contains('show')) {
-            moreInfo.classList.remove('show');
-            moreInfo.style.maxHeight = "0";
-        } else {
-            moreInfo.classList.add('show');
-            moreInfo.style.maxHeight = moreInfo.scrollHeight + "px";
+        function toggleMoreInfo() {
+            const moreInfo = document.getElementById('more-info');
+            if (moreInfo.classList.contains('show')) {
+                moreInfo.classList.remove('show');
+                moreInfo.style.maxHeight = "0";
+            } else {
+                moreInfo.classList.add('show');
+                moreInfo.style.maxHeight = moreInfo.scrollHeight + "px";
+            }
         }
-    }
-</script>
+    </script>
 </head>
 <body>
 <header>
@@ -165,7 +175,14 @@
     </nav>
 </header>
 
-<div class="box">
+<div class="box" id="email-checker">
+    <h1>Email Checker</h1>
+    <textarea id="emailInput" placeholder="Paste the email content here" style="font-size: 18px; padding: 10px; width: 80%; height: 150px;"></textarea>
+    <button onclick="checkEmail()">Check Email</button>
+    <div class="result" id="result"></div>
+</div>
+
+<div class="box2">
     <h1>Gone Phishin!</h1>
     <p>Protect yourself from phishing attacks by analyzing links inside emails.</p>
     <button onclick="toggleMoreInfo()">Learn More</button>
@@ -177,14 +194,8 @@
     </div>
 </div>
 
-<div class="box" id="link-checker">
-    <h1>Link Checker</h1>
-    <input type="text" id="linkInput" placeholder="Enter URL here" style="font-size: 18px; padding: 10px; width: 80%;" />
-    <button onclick="checkLink()">Check Link</button>
-    <div class="result" id="result"></div>
-</div>
-
 <footer>
+    <p>&copy; 2024 University of Pittsburgh | <a href="https://github.com/J-Sit89/SteelHacks-24-25">GitHub Repository</a></p>
 </footer>
 </body>
 </html>
