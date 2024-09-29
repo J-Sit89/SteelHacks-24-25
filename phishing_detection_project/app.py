@@ -1,23 +1,44 @@
+import google.generativeai as genai
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import joblib
 import pandas as pd
 from urllib.parse import urlparse
 import re
-pipeline = joblib.load('phishing_detection_pipeline.pkl')
-
-
-
-
-
 
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)
 
-
+# Load the phishing detection pipeline model
 pipeline = joblib.load('phishing_detection_pipeline.pkl')
 
+# Configure the Gemini API with the provided API key
+genai.configure(api_key="AIzaSyC_0Gs_kC9DepUQ7bPrRVbRL4Y_auh2bJ0")
+
+# Initialize Gemini model
+gemini_model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+# Generate content
+try:
+    response = model.generate_content("What is the meaning of life?")
+    print(response.text)
+except Exception as e:
+    print(f"Error calling Gemini API: {e}")
+
+# Function to extract features from the URL
+def extract_url_features(url):
+    parsed_url = urlparse(url)
+    domain = parsed_url.netloc.lower()
+    path = parsed_url.path
+    query = parsed_url.query
+    file_name = path.split('/')[-1] if path else ''
+    
+    # Helper function to check if a domain is an IP address
+    def is_ip(domain):
+        return bool(re.match(r"^\d{1,3}(?:\.\d{1,3}){3}$", domain))
+    
 
 
 # Load whitelisted domains and URLs from files
@@ -185,72 +206,97 @@ def extract_url_features(url):
     
     return features
 
-
-# Define the /analyze_link route for the extension (if needed)
 @app.route('/analyze_link', methods=['POST'])
 def analyze_link():
     data = request.json
     url = data.get('url')
-    
+
     if not url:
         return jsonify({'error': 'No URL provided'}), 400
 
     # Parse the URL to get the domain
     parsed_url = urlparse(url)
     domain = parsed_url.netloc.lower()
-    
-    # Whitelist check for specific URL
-    if is_url_whitelisted(url):
-        return jsonify({'phishing': 0})
-    
-    # Whitelist check for domain
-    if is_domain_whitelisted(domain):
-        return jsonify({'phishing': 0})
-    
-    # Proceed with feature extraction and prediction
-    features = extract_url_features(url)
-    features_df = pd.DataFrame([features])
-    prediction = pipeline.predict(features_df)
-    
-    # Return the prediction as JSON
-    return jsonify({'phishing': int(prediction[0])})
+
+    # Whitelist of domains
+    whitelist_domains = ', '.join(WHITELISTED_DOMAINS)
+
+    # Initialize default values for the results
+    phishing_prediction = 1
+    gemini_analysis = "No analysis provided by Gemini."
+
+    try:
+        # Log for debugging
+        print(f"Received URL: {url}")
+        print("Extracting features from the URL...")
+
+        # Proceed with feature extraction and phishing model prediction
+        features = extract_url_features(url)
+        features_df = pd.DataFrame([features])
+        phishing_prediction = pipeline.predict(features_df)
+        phishing_prediction = int(phishing_prediction[0])
+
+        # Log the phishing prediction
+        print(f"Phishing prediction result: {phishing_prediction}")
+
+        # If the model predicts phishing, use Gemini to provide further analysis
+        if phishing_prediction == 1:
+            print(f"Calling Gemini API to analyze URL: {url} against whitelist domains: {whitelist_domains}")
+            
+            # Construct the prompt by giving context with whitelist domains
+            prompt = (f"Here is a list of trusted domains: {whitelist_domains}. "
+                      f"Determine if the following URL is a phishing link based on its domain: {url}. "
+                      f"Is the domain in the URL suspicious or does it match the trusted domains?")
+                      
+            # Send the prompt to Gemini and get the analysis
+            print(f"Prompt sent to Gemini: {prompt}")
+            response = model.generate_content(prompt)
+            gemini_analysis = response.text
+            print(f"Gemini API response: {gemini_analysis}")
+        else:
+            gemini_analysis = "The URL seems safe based on the model prediction."
+            print("URL is considered safe by the phishing model.")
+
+    except Exception as e:
+        print(f"Error during processing: {e}")
+        gemini_analysis = "Error in generating Gemini analysis."
+
+    # Return both the phishing prediction and Gemini analysis as JSON
+    print(f"Final response: phishing: {phishing_prediction}, gemini_analysis: {gemini_analysis}")
+    return jsonify({
+        'phishing': phishing_prediction,
+        'gemini_analysis': gemini_analysis
+    })
+
 
 # Define the /check_link route for the web interface
 @app.route('/check_link', methods=['POST'])
 def check_link():
     data = request.get_json()
     url = data.get('url')
-    
+
     if not url:
         return jsonify({'error': 'No URL provided'}), 400
-    
-    # Parse the URL to get the domain
-    parsed_url = urlparse(url)
-    domain = parsed_url.netloc.lower()
-    print(f"URL received: {url}")
-    print(f"Domain extracted: {domain}")
-    
-    # Whitelist check for specific URL
-    if is_url_whitelisted(url):
-        print("URL is whitelisted.")
-        return jsonify({'phishing': 0})
-    
-    # Whitelist check for domain
-    if is_domain_whitelisted(domain):
-        print("Domain is whitelisted.")
-        return jsonify({'phishing': 0})
-    else:
-        print("Domain is NOT whitelisted.")
-    
-    # Proceed with feature extraction and prediction
+
+    # Proceed with feature extraction and phishing model prediction
     features = extract_url_features(url)
     features_df = pd.DataFrame([features])
     prediction = pipeline.predict(features_df)
-    
-    print(f"Prediction: {prediction[0]}")
-    
-    # Return the prediction as JSON
-    return jsonify({'phishing': int(prediction[0])})
+    phishing_prediction = int(prediction[0])
+
+    # If the model predicts phishing (1), use Gemini to provide further analysis
+    if phishing_prediction == 1:
+        response = gemini_model.generate_content(f"Provide a detailed analysis on why this URL might be a phishing link: {url}")
+        gemini_analysis = response.text
+    else:
+        gemini_analysis = "The URL seems safe based on the model prediction."
+
+    # Return the phishing prediction and Gemini analysis as JSON
+    return jsonify({
+        'phishing': phishing_prediction,
+        'gemini_analysis': gemini_analysis
+    })
+
 
 if __name__ == '__main__':
     app.run()
