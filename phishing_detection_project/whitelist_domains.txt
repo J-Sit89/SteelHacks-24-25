@@ -1,7 +1,13 @@
 microsoft.com
-google.com
+*.google.com
 aka.ms
 apple.com
 github.com
 linkedin.com
 *.pitt.edu
+google.com
+www.google.com
+mail.google.com
+pitt.edu
+www.pitt.edu
+canvas.pitt.edu

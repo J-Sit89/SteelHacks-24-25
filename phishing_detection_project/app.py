@@ -4,27 +4,64 @@ import joblib
 import pandas as pd
 from urllib.parse import urlparse
 import re
+
+# Initialize Flask app
+app = Flask(__name__)
+CORS(app)
+
+
 pipeline = joblib.load('phishing_detection_pipeline.pkl')
 
 
 
+# Load whitelisted domains and URLs from files
+def load_whitelist_domains():
+    with open('whitelist_domains.txt', 'r') as file:
+        domains = []
+        for line in file:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                domains.append(line)
+    return domains
 
+def load_whitelist_urls():
+    with open('whitelist_urls.txt', 'r') as file:
+        urls = set(line.strip() for line in file if line.strip())
+    return urls
 
+# Load the whitelists
+WHITELISTED_DOMAINS = load_whitelist_domains()
+print(f"Loaded whitelisted domains: {WHITELISTED_DOMAINS}")
+WHITELISTED_URLS = load_whitelist_urls()
+print(f"Loaded whitelisted URLs: {WHITELISTED_URLS}")
 
-# Initialize Flask app
-app = Flask(__name__)
-CORS(app)  
+def is_domain_whitelisted(domain):
+    domain = domain.lower()
+    print(f"Checking if domain '{domain}' is whitelisted.")
+    for pattern in WHITELISTED_DOMAINS:
+        # Normalize the base domain by removing any leading '*.' and converting to lowercase
+        base_domain = pattern.lstrip('*.').lower()
+        # Check for exact match or subdomain match
+        if domain == base_domain or domain.endswith('.' + base_domain):
+            print(f"Domain '{domain}' matched with whitelist pattern '{pattern}'")
+            return True
+    print(f"Domain '{domain}' is NOT whitelisted.")
+    return False
+
+def is_url_whitelisted(url):
+    return url in WHITELISTED_URLS
+
 # Function to extract features from URL
 def extract_url_features(url):
     parsed_url = urlparse(url)
-    domain = parsed_url.netloc
+    domain = parsed_url.netloc.lower()
     path = parsed_url.path
     query = parsed_url.query
     file_name = path.split('/')[-1] if path else ''
     
     # Helper function to check if a domain is an IP address
     def is_ip(domain):
-        return bool(re.match(r"(\d{1,3}\.){3}\d{1,3}", domain))
+        return bool(re.match(r"^\d{1,3}(?:\.\d{1,3}){3}$", domain))
     
     features = {
         'qty_dot_url': url.count('.'),
@@ -141,62 +178,72 @@ def extract_url_features(url):
     }
     
     return features
-# Load whitelisted domains and URLs from files
-def load_whitelist_domains():
-    with open('whitelist_domains.txt', 'r') as file:
-        domains = [line.strip() for line in file if line.strip()]
-    return domains
-
-def load_whitelist_urls():
-    with open('whitelist_urls.txt', 'r') as file:
-        urls = set(line.strip() for line in file if line.strip())
-    return urls
-
-# Load the whitelists
-WHITELISTED_DOMAINS = load_whitelist_domains()
-WHITELISTED_URLS = load_whitelist_urls()
 
 
-def is_domain_whitelisted(domain):
-    domain = domain.lower()
-    for pattern in WHITELISTED_DOMAINS:
-        # Handle wildcard patterns
-        if pattern.startswith('*.'):
-            # Remove '*.' from pattern to get the base domain
-            base_domain = pattern[2:].lower()
-            # Regex to match subdomains of the base domain
-            regex_pattern = r'^([a-z0-9-]+\.)*' + re.escape(base_domain) + r'$'
-        else:
-            # Exact domain match
-            base_domain = pattern.lower()
-            regex_pattern = r'^' + re.escape(base_domain) + r'$'
-        
-        if re.match(regex_pattern, domain):
-            return True
-    return False
-
-def is_url_whitelisted(url):
-    return url in WHITELISTED_URLS
-
-# Define the /analyze_link route for analyzing phishing links
+# Define the /analyze_link route for the extension (if needed)
 @app.route('/analyze_link', methods=['POST'])
 def analyze_link():
     data = request.json
     url = data.get('url')
     
-    # Extract features from the URL
+    if not url:
+        return jsonify({'error': 'No URL provided'}), 400
+
+    # Parse the URL to get the domain
     parsed_url = urlparse(url)
-    domain = parsed_url.netloc
+    domain = parsed_url.netloc.lower()
     
-    # Check if domain is whitelisted
+    # Whitelist check for specific URL
+    if is_url_whitelisted(url):
+        return jsonify({'phishing': 0})
+    
+    # Whitelist check for domain
     if is_domain_whitelisted(domain):
-        # Return '0' indicating the link is safe
         return jsonify({'phishing': 0})
     
     # Proceed with feature extraction and prediction
     features = extract_url_features(url)
     features_df = pd.DataFrame([features])
     prediction = pipeline.predict(features_df)
+    
+    # Return the prediction as JSON
+    return jsonify({'phishing': int(prediction[0])})
+
+# Define the /check_link route for the web interface
+@app.route('/check_link', methods=['POST'])
+def check_link():
+    data = request.get_json()
+    url = data.get('url')
+    
+    if not url:
+        return jsonify({'error': 'No URL provided'}), 400
+    
+    # Parse the URL to get the domain
+    parsed_url = urlparse(url)
+    domain = parsed_url.netloc.lower()
+    print(f"URL received: {url}")
+    print(f"Domain extracted: {domain}")
+    
+    # Whitelist check for specific URL
+    if is_url_whitelisted(url):
+        print("URL is whitelisted.")
+        return jsonify({'phishing': 0})
+    
+    # Whitelist check for domain
+    if is_domain_whitelisted(domain):
+        print("Domain is whitelisted.")
+        return jsonify({'phishing': 0})
+    else:
+        print("Domain is NOT whitelisted.")
+    
+    # Proceed with feature extraction and prediction
+    features = extract_url_features(url)
+    features_df = pd.DataFrame([features])
+    prediction = pipeline.predict(features_df)
+    
+    print(f"Prediction: {prediction[0]}")
+    
+    # Return the prediction as JSON
     return jsonify({'phishing': int(prediction[0])})
 
 if __name__ == '__main__':
