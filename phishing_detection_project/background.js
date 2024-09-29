@@ -8,22 +8,22 @@ function sendUrlToApi(url, callback) {
     })
     .then(response => response.json())
     .then(data => {
-        callback(data.phishing);
+        callback(data.phishing, data.gemini_analysis);  // Pass both phishing result and Gemini analysis
     })
     .catch(error => {
         console.error('Error:', error);
-        callback(null);  // Indicate an error occurred
+        callback(null, null);  // Indicate an error occurred
     });
 }
 
 // Listen for messages from content_script.js
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'checkLink') {
-        sendUrlToApi(message.url, (result) => {
+        sendUrlToApi(message.url, (result, geminiAnalysis) => {
             if (result !== null) {
-                sendResponse({ result: result });
+                sendResponse({ result: result, gemini_analysis: geminiAnalysis });
             } else {
-                sendResponse({ result: -1 });  // Error indicator
+                sendResponse({ result: -1, gemini_analysis: "Error analyzing link." });  // Error indicator
             }
         });
         return true;  // Keeps the response channel open
