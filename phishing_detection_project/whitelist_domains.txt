@@ -1,0 +1,7 @@
+microsoft.com
+google.com
+aka.ms
+apple.com
+github.com
+linkedin.com
+*.pitt.edu

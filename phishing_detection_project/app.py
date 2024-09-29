@@ -141,13 +141,43 @@ def extract_url_features(url):
     }
     
     return features
-WHITELISTED_DOMAINS = {'canvas.pitt.edu''microsoft.com', 'google.com', 'aka.ms', 'apple.com', 'github.com', 'linkedin.com'}
+# Load whitelisted domains and URLs from files
+def load_whitelist_domains():
+    with open('whitelist_domains.txt', 'r') as file:
+        domains = [line.strip() for line in file if line.strip()]
+    return domains
+
+def load_whitelist_urls():
+    with open('whitelist_urls.txt', 'r') as file:
+        urls = set(line.strip() for line in file if line.strip())
+    return urls
+
+# Load the whitelists
+WHITELISTED_DOMAINS = load_whitelist_domains()
+WHITELISTED_URLS = load_whitelist_urls()
+
 
 def is_domain_whitelisted(domain):
-    for whitelisted_domain in WHITELISTED_DOMAINS:
-        if domain.endswith(whitelisted_domain):
+    domain = domain.lower()
+    for pattern in WHITELISTED_DOMAINS:
+        # Handle wildcard patterns
+        if pattern.startswith('*.'):
+            # Remove '*.' from pattern to get the base domain
+            base_domain = pattern[2:].lower()
+            # Regex to match subdomains of the base domain
+            regex_pattern = r'^([a-z0-9-]+\.)*' + re.escape(base_domain) + r'$'
+        else:
+            # Exact domain match
+            base_domain = pattern.lower()
+            regex_pattern = r'^' + re.escape(base_domain) + r'$'
+        
+        if re.match(regex_pattern, domain):
             return True
     return False
+
+def is_url_whitelisted(url):
+    return url in WHITELISTED_URLS
+
 # Define the /analyze_link route for analyzing phishing links
 @app.route('/analyze_link', methods=['POST'])
 def analyze_link():
