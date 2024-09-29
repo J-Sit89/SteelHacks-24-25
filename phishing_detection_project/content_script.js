@@ -10,17 +10,20 @@
 
         let link = linkElement.href;
 
-        chrome.runtime.sendMessage({
+        // Send the link to the background script for analysis
+        browser.runtime.sendMessage({
             action: 'checkLink',
             url: link
         }, function(response) {
-            if (chrome.runtime.lastError) {
-                console.error(chrome.runtime.lastError);
-                linkElement.style.backgroundColor = 'yellow';
-                linkElement.title = 'Error checking this link.';
-            } else if (response && response.result === 1) {
-                linkElement.style.backgroundColor = 'red';  // Mark phishing link
+            if (response && response.result === 1) {
+                // Mark phishing link in red
+                linkElement.style.backgroundColor = 'red';
                 linkElement.title = 'Warning: This link may be phishing!';
+                
+                // Display Gemini's analysis in a tooltip
+                if (response.gemini_analysis) {
+                    linkElement.title += '\nGemini Analysis: ' + response.gemini_analysis;
+                }
             } else if (response && response.result === 0) {
                 linkElement.style.backgroundColor = 'transparent';
                 linkElement.title = 'This link is safe.';
