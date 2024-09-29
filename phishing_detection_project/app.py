@@ -10,6 +10,8 @@ import re
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)
+# Rate limiter cache to store checked domains
+cache = {}
 
 # Load the phishing detection pipeline model
 pipeline = joblib.load('phishing_detection_pipeline.pkl')
@@ -206,6 +208,18 @@ def extract_url_features(url):
     
     return features
 
+# Function to limit API calls for known safe URLs
+def check_cache(url):
+    domain = urlparse(url).netloc.lower()
+    if domain in cache:
+        return cache[domain]
+    return None
+
+# Function to add a URL/domain to cache
+def add_to_cache(url, gemini_analysis):
+    domain = urlparse(url).netloc.lower()
+    cache[domain] = gemini_analysis
+
 @app.route('/analyze_link', methods=['POST'])
 def analyze_link():
     data = request.json
@@ -214,12 +228,18 @@ def analyze_link():
     if not url:
         return jsonify({'error': 'No URL provided'}), 400
 
+    # Check the cache first to avoid redundant Gemini API calls
+    cached_result = check_cache(url)
+    if cached_result:
+        print(f"Returning cached result for domain: {url}")
+        return jsonify({
+            'phishing': 1,
+            'gemini_analysis': cached_result
+        })
+
     # Parse the URL to get the domain
     parsed_url = urlparse(url)
     domain = parsed_url.netloc.lower()
-
-    # Whitelist of domains
-    whitelist_domains = ', '.join(WHITELISTED_DOMAINS)
 
     # Initialize default values for the results
     phishing_prediction = 1
@@ -228,46 +248,40 @@ def analyze_link():
     try:
         # Log for debugging
         print(f"Received URL: {url}")
-        print("Extracting features from the URL...")
-
-        # Proceed with feature extraction and phishing model prediction
+        
+        # Extract features for the phishing model
         features = extract_url_features(url)
         features_df = pd.DataFrame([features])
         phishing_prediction = pipeline.predict(features_df)
         phishing_prediction = int(phishing_prediction[0])
 
-        # Log the phishing prediction
-        print(f"Phishing prediction result: {phishing_prediction}")
+        # Log the phishing prediction result
+        print(f"Phishing model prediction: {phishing_prediction}")
 
         # If the model predicts phishing, use Gemini to provide further analysis
         if phishing_prediction == 1:
-            print(f"Calling Gemini API to analyze URL: {url} against whitelist domains: {whitelist_domains}")
-            
-            # Construct the prompt by giving context with whitelist domains
-            prompt = (f"Here is a list of trusted domains: {whitelist_domains}. "
-                      f"Determine if the following URL is a phishing link based on its domain: {url}. "
-                      f"Is the domain in the URL suspicious or does it match the trusted domains?")
-                      
-            # Send the prompt to Gemini and get the analysis
-            print(f"Prompt sent to Gemini: {prompt}")
+            print(f"Calling Gemini API for further analysis of URL: {url}")
+            prompt = (f"Here is a list of trusted domains: {', '.join(WHITELISTED_DOMAINS)}. "
+                      f"Determine if the following URL is a phishing link: {url}.")
             response = model.generate_content(prompt)
             gemini_analysis = response.text
-            print(f"Gemini API response: {gemini_analysis}")
+            print(f"Gemini analysis: {gemini_analysis}")
+
+            # Cache the result
+            add_to_cache(url, gemini_analysis)
         else:
             gemini_analysis = "The URL seems safe based on the model prediction."
-            print("URL is considered safe by the phishing model.")
-
+            print(f"URL is considered safe based on model prediction.")
+            
     except Exception as e:
         print(f"Error during processing: {e}")
         gemini_analysis = "Error in generating Gemini analysis."
 
-    # Return both the phishing prediction and Gemini analysis as JSON
-    print(f"Final response: phishing: {phishing_prediction}, gemini_analysis: {gemini_analysis}")
+    # Return both phishing prediction and Gemini analysis
     return jsonify({
         'phishing': phishing_prediction,
         'gemini_analysis': gemini_analysis
     })
-
 
 # Define the /check_link route for the web interface
 @app.route('/check_link', methods=['POST'])
