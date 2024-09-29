@@ -5,6 +5,7 @@
     "description": "Detect phishing links in emails.",
     "permissions": [
         "activeTab",
+        "webRequest",
         "https://mail.google.com/*",
         "https://outlook.live.com/*",
         "https://outlook.office365.com/*",
@@ -24,5 +25,11 @@
             ],
             "js": ["content_script.js"]
         }
-    ]
+    ],
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "phishing-detector@example.com",
+            "strict_min_version": "52.0"
+        }
+    }
 }
