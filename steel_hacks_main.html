@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pitt Colors Gradient</title>
+    <title>Pitt's gone phishin!</title>
     <style>
         body {
             margin: 0;
@@ -27,7 +27,7 @@
         }
 
         header img {
-            width: 100px; /* Adjust the width as necessary */
+            width: 100px;
             height: auto;
         }
 
@@ -43,8 +43,8 @@
             border-radius: 20px;
             text-align: center;
             width: 60%;
-            margin: 20px 0; /* Space above and below the box */
-            flex: 1; /* Allows the box to grow and fill the space */
+            margin: 20px 0;
+            flex: 1;
         }
 
         .box img {
@@ -67,6 +67,12 @@
             font-size: 18px;
         }
 
+        #more-info {
+            display: none;
+            margin-top: 20px;
+            font-size: 16px;
+        }
+
         footer {
             background-color: rgba(0, 0, 0, 0.8);
             width: 100%;
@@ -86,36 +92,69 @@
             color: white;
             text-decoration: none;
         }
+
+        /* Style for the button with a different font */
+        button {
+            background-color: #FFB81C;
+            border: none;
+            color: #003594;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            font-family: Arial, sans-serif; /* Change font to something different */
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #003594;
+            color: #FFB81C;
+        }
+
+        /* Animation for toggling visibility */
+        #more-info {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease;
+        }
+
+        #more-info.show {
+            max-height: 300px; /* or a reasonable height for the content */
+        }
     </style>
 </head>
 <body>
     <header>
-        <a href='steel_hacks_main.html'> <img src="steel_hacks_2025 website\Shield_UnivPittsburgh_White.png" alt="Pitt Logo"> </a>
+        <a href='steel_hacks_main.html'>
+            <img src="SteelHacks-24-25/Shield_UnivPittsburgh_White.png" alt="Pitt Logo">
+        </a>
         <nav>
             <a href="steel_hacks_link_checker.html">Link Checker</a>
             <a href="steel_hacks_about_us.html">About Us</a>
         </nav>
     </header>
     <div class="box">
-        <h1>Pitt Colors: Navy Blue to Gold Gradient</h1>
-        <div class="links">
-            <a href="https://chrome-extension-download.com" target="_blank">
-                <img src="chrome-logo.png" alt="Chrome Logo">
-            </a>
-            <a href="https://firefox-extension-download.com" target="_blank">
-                <img src="firefox-logo.png" alt="Firefox Logo">
-            </a>
-            <a href="https://safari-extension-download.com" target="_blank">
-                <img src="safari-logo.png" alt="Safari Logo">
-            </a>
-        </div>
-        <div class="description">
-            <p><strong>Phishing Detection Extension:</strong> This browser extension helps protect you from phishing attacks by analyzing the links inside emails. It checks if a link is associated with a known phishing site or domain, alerting you before you click. Stay safe with real-time phishing detection, whether you're using Chrome, Firefox, or Safari!</p>
-            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum.</p>
+        <h1>Phishing Detection Extension</h1>
+        <p>Protect yourself from phishing attacks by analyzing links inside emails.</p>
+        <button onclick="toggleMoreInfo()">Learn More</button>
+        <div id="more-info">
+            <p>This extension checks links against a database of known phishing sites, alerting you if a link is suspicious. With real-time detection, you’re protected from new threats as they emerge.</p>
+            <p>Fully compatible with Firefox, it integrates seamlessly, providing enhanced security for your browsing and email experience, whether on Windows, macOS, or Linux.</p>
         </div>
     </div>
     <footer>
         <p>For questions, email us at <a href="mailto:questions@example.com">questions@example.com</a></p>
     </footer>
+
+    <script>
+        function toggleMoreInfo() {
+            const moreInfo = document.getElementById('more-info');
+            if (moreInfo.classList.contains('show')) {
+                moreInfo.classList.remove('show');
+            } else {
+                moreInfo.classList.add('show');
+            }
+        }
+    </script>
 </body>
 </html>
